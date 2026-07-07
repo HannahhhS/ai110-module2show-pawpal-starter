@@ -5,6 +5,11 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+3 core actions a user shiuld be able to perform include adding a pet to the database, adding a new task and viewing those tasks, and scheduling and organizing things like walks, meds, appointments, etc. 
+Pet - name, age, species. Can complete a walk, "eat" a meal, etc
+Owner - name, preferences. Can add a pet
+Task - walks, feedings, meds
+Scheduler - schedule a walk, meal schedule, med schedule
 - What classes did you include, and what responsibilities did you assign to each?
 
 **b. Design changes**

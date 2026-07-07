@@ -1,15 +1,54 @@
 classDiagram
-    %% Replace the placeholders below with your actual classes, attributes, methods, and relationships.
-    %% Keep this file updated so it matches your final implementation.
+    %% PawPal+ — class diagram.
+    %% CHANGE LOG (design evolution, kept for project reflection):
+    %%   v1 = initial brainstorm.  v2 = revisions below.
+    %%   Old items are kept as %% comments so the design history is visible.
 
-    class ClassName {
-        +type attribute
-        +method() returnType
+    class Owner {
+        +str name
+        +dict preferences
+        +list~Pet~ pets
+        +add_pet(pet) None
+        %% v2 added: update a single preference cleanly
+        +set_preference(key, value) None
     }
 
-    class AnotherClass {
-        +type attribute
-        +method() returnType
+    class Pet {
+        +str name
+        +int age
+        +str species
+        %% v2 added: pets now own their own task list
+        +list~Task~ tasks
+        +add_task(task) None
+        +list_tasks() list~Task~
+        %% v2 removed: complete_walk() / eat_meal() — a walk or meal is just a Task; complete it via task.mark_done()
     }
 
-    ClassName --> AnotherClass : relationship
+    class Task {
+        %% v1 fields (replaced in v2):
+        %% +str title
+        %% +str category
+        %% +int duration_minutes
+        %% +str priority
+        %% v2 fields:
+        +str description
+        +str time
+        +str frequency
+        +int duration_minutes
+        +bool completed
+        +mark_done() None
+        %% v2 removed: is_complete() bool — redundant, read the `completed` attribute directly
+    }
+
+    class Scheduler {
+        %% v1 methods (replaced in v2 by a single build_plan):
+        %% +schedule_walk(task) None
+        %% +schedule_meal(task) None
+        %% +schedule_med(task) None
+        %% v2: one general method builds the whole day's plan
+        +build_plan(tasks, available_minutes, start_time) list~Task~
+    }
+
+    Owner "1" --> "*" Pet : owns
+    Pet "1" --> "*" Task : has care tasks
+    Scheduler "1" --> "*" Task : schedules
