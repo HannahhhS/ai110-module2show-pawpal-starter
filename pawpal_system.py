@@ -17,8 +17,11 @@ class Task:
     frequency: str
     duration_minutes: int
     completed: bool = False
-    # ISO "YYYY-MM-DD" the task is due. Blank means "no date set yet".
-    due_date: str = ""
+    # ISO "YYYY-MM-DD" the task is due. Defaults to today; pass an explicit
+    # date to schedule a task for a future day. default_factory (not a plain
+    # default) so each task gets the *current* day at creation time, not the
+    # day this module was first imported.
+    due_date: str = field(default_factory=lambda: date.today().isoformat())
 
     def mark_done(self) -> None:
         """Mark this task as completed."""
