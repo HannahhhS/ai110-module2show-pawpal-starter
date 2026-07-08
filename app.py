@@ -94,6 +94,12 @@ else:
 st.divider()
 
 st.subheader("Build Schedule")
+
+# Filter by pet: "All pets" uses every task; a specific pet uses tasks_for_pet().
+pet_filter = st.selectbox(
+    "Plan for", ["All pets"] + [pet.name for pet in owner.pets]
+)
+
 col_a, col_b = st.columns(2)
 with col_a:
     start_time = st.text_input("Day starts at (HH:MM)", value="08:00")
@@ -104,11 +110,50 @@ with col_b:
 
 if st.button("Generate schedule"):
     scheduler = Scheduler()
-    plan = scheduler.build_plan(owner.all_tasks(), int(available_minutes), start_time)
+    # Apply the pet filter before scheduling.
+    if pet_filter == "All pets":
+        all_tasks = owner.all_tasks()
+    else:
+        all_tasks = owner.tasks_for_pet(pet_filter)
+    plan = scheduler.build_plan(all_tasks, int(available_minutes), start_time)
+
+    # --- Conflict check first: warn the owner before they trust the plan ---
+    conflicts = scheduler.find_conflicts(all_tasks)
+    if conflicts:
+        st.warning(
+            f"⚠️ {len(conflicts)} scheduling conflict(s) found — "
+            "two tasks are booked for the same time. Review before your day starts:"
+        )
+        for warning in conflicts:
+            st.markdown(f"- {warning}")
+    else:
+        st.success("✅ No scheduling conflicts — every task has its own time slot.")
 
     st.markdown("### Today's Schedule")
     if not plan:
         st.warning("Nothing fits the plan. Add tasks, or increase the time available.")
     else:
-        for task in plan:
-            st.write(f"**{task.time}** — {task.description} ({task.duration_minutes} min)")
+        # Sorted, professional table view of what made it into the day's plan.
+        ordered = scheduler.sort_by_time(plan)
+        conflict_times = {
+            task.time
+            for i, task in enumerate(all_tasks)
+            for other in all_tasks[i + 1:]
+            if task.due_date == other.due_date and task.time == other.time
+        }
+        rows = [
+            {
+                "Time": task.time,
+                "Task": task.description,
+                "Duration (min)": task.duration_minutes,
+                "Status": "⚠️ Conflict" if task.time in conflict_times else "✅ OK",
+            }
+            for task in ordered
+        ]
+        st.table(rows)
+
+        planned_minutes = sum(task.duration_minutes for task in ordered)
+        st.success(
+            f"Planned {len(ordered)} task(s) using {planned_minutes} of "
+            f"{int(available_minutes)} available minutes."
+        )

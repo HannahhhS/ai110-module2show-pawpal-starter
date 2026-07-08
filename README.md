@@ -63,49 +63,72 @@ Paste a sample of your app's CLI or Streamlit output here so a reader can see wh
 
 ```bash
 # Run the full test suite:
-pytest
+py -m pytest
 
 # Run with coverage:
 pytest --cov
+These tests cover core logic of the system, including scheduling tasks, adding pets, etc. It checks for conflict detection, sorting, filtering. It ensures the core functions work as expected, including edge cases, like no pets. 
 ```
 
 Sample test output:
 
 ```
-# Paste your pytest output here
+# collected 6 items                                                                                                                                              
+
+tests\test_pawpal.py ......                                                                                                                              [100%]
+
+====================================================================== 6 passed in 0.05s ======================================================================
+Confidence label of 4. 
 ```
 
 ## 📐 Smarter Scheduling
 
-PawPal+ adds four pieces of scheduling logic on top of the basic data classes. Each is a small, focused method:
+> Fill in once you've implemented scheduling logic.
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | `Scheduler.sort_by_time()` | Orders tasks earliest-first by their `time` |
-| Filtering | `Owner.tasks_for_pet()`, `Scheduler.build_plan()` | By pet name; completed tasks are skipped inside `build_plan` |
-| Conflict handling | `Scheduler.find_conflicts()` | Flags tasks booked at the same day + time |
-| Recurring tasks | `Task.next_occurrence()`, `Pet.mark_task_complete()` | Completing a daily/weekly task auto-creates the next one |
-
-**Sorting behavior — `Scheduler.sort_by_time()`**
-Returns a new list of tasks ordered earliest-first. It uses `sorted()` with a lambda key (`key=lambda t: t.time`); because times are zero-padded 24-hour `"HH:MM"` strings, they sort chronologically as plain text with no conversion needed.
-
-**Filtering behavior — `Owner.tasks_for_pet()` and `Scheduler.build_plan()`**
-`tasks_for_pet(pet_name)` filters tasks down to a single pet, returning an empty list if no pet matches (so the UI never crashes on a bad name). Filtering by completion status happens inside `build_plan()`, which skips any task whose `completed` flag is `True`.
-
-**Conflict detection — `Scheduler.find_conflicts()`**
-Compares each task against the ones after it and returns a list of plain-text warnings for any pair that shares both the same day (`due_date`) and the same start `time`. It returns a warning list rather than raising an error, so the program never crashes. Because it runs on a flat task list, it catches clashes within one pet or across different pets. (Tradeoff: it checks exact start times, not overlapping durations — see reflection.md §2b.)
-
-**Recurring task logic — `Task.next_occurrence()` and `Pet.mark_task_complete()`**
-`next_occurrence()` builds a fresh, incomplete copy of a task dated for its next repeat using `timedelta` (daily → +1 day, weekly → +7 days), and returns `None` for non-repeating frequencies. `mark_task_complete()` ties it together: it marks the task done and, if a next occurrence exists, adds it to the pet's task list so recurring care never falls off the schedule.
+| Task sorting | Scheduler.sort_by_time()| sort by time, in increasing order |
+| Filtering | Owner.tasks_for_pet() | filter tasks by pet name, so person can view tasks for just one pet in time order|
+| Conflict handling |Scheduler.find_conflict() | flag a conflict warning of 2 tasks start at same time and day |
+| Recurring tasks | Task.next_occurance() | automatically create another task due the next day for repeating tasks|
 
 ## 📸 Demo Walkthrough
 
 Describe your app in numbered steps so a reader can follow along without watching a video:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
+UI has sectuons to add a pet, add a test, and build a schedule. 
+
+Scheduling behavuors, such as conflict detection, are shown as a flag feature before generating the schedule. Results from the generate schedule are automatically sorted. 
+
+Sample main.py
+
+=== Conflict check ===
+  WARNING: Conflict at 08:30: 'Playtime' overlaps with 'Long walk'.
+=== Rex's tasks only ===
+  08:30  Long walk
+  09:30  Give meds
+=== Mochi's tasks only ===
+  08:00  Morning feeding
+  08:15  Litter box scoop
+  08:30  Playtime
+=== Complete Rex's daily walk ===
+  Marked 'Long walk' done: True
+  Auto-created next 'Long walk' due 2026-07-08
+=== Rex's tasks after completion ===
+  [done] 08:30  Long walk  (due 2026-07-07)
+  [todo] 09:30  Give meds  (due 2026-07-07)
+  [todo] 08:30  Long walk  (due 2026-07-08)
+=== Today's Schedule ===
+  08:00  Morning feeding (10 min)
+  08:15  Litter box scoop (5 min)
+  08:30  Playtime (15 min)
+  08:30  Long walk (45 min)
+  09:30  Give meds (5 min)
+
+1. <!-- User firsts adds their name, and a pet. User can add details like the name, age and species for a pet -->
+2. <!-- User can choose a specific pet, and schedule a task for that pet.  -->
+3. <!-- User can then generate a schedule that includes all the tasks for all the pets. This is displayed in a table.   -->
+4. <!-- User views the completed table that is sorted aoccrding to time. -->
 5. <!-- Add more steps as needed -->
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->

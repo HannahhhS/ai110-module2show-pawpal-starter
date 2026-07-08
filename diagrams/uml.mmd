@@ -1,7 +1,7 @@
 classDiagram
     %% PawPal+ — class diagram.
     %% CHANGE LOG (design evolution, kept for project reflection):
-    %%   v1 = initial brainstorm.  v2 = revisions below.
+    %%   v1 = initial brainstorm.  v2 = design revisions.  v3 = updates from the build phase.
     %%   Old items are kept as %% comments so the design history is visible.
 
     class Owner {
@@ -11,6 +11,10 @@ classDiagram
         +add_pet(pet) None
         %% v2 added: update a single preference cleanly
         +set_preference(key, value) None
+        %% v3 added: flat task list — this is how the Scheduler gets its data
+        +all_tasks() list~Task~
+        %% v3 added: "filter by pet" view used by the UI
+        +tasks_for_pet(pet_name) list~Task~
     }
 
     class Pet {
@@ -22,6 +26,8 @@ classDiagram
         +add_task(task) None
         +list_tasks() list~Task~
         %% v2 removed: complete_walk() / eat_meal() — a walk or meal is just a Task; complete it via task.mark_done()
+        %% v3 added: mark done AND auto-schedule the next repeat; returns the new Task (or None)
+        +mark_task_complete(task) Task
     }
 
     class Task {
@@ -36,8 +42,12 @@ classDiagram
         +str frequency
         +int duration_minutes
         +bool completed
+        %% v3 added: ISO "YYYY-MM-DD" the task is due (defaults to today)
+        +str due_date
         +mark_done() None
         %% v2 removed: is_complete() bool — redundant, read the `completed` attribute directly
+        %% v3 added: build the next daily/weekly repeat of this task (or None if it doesn't repeat)
+        +next_occurrence() Task
     }
 
     class Scheduler {
@@ -47,8 +57,15 @@ classDiagram
         %% +schedule_med(task) None
         %% v2: one general method builds the whole day's plan
         +build_plan(tasks, available_minutes, start_time) list~Task~
+        %% v3 added: static helper — order tasks earliest-first by time
+        +sort_by_time(tasks)$ list~Task~
+        %% v3 added: static helper — flag tasks that clash at the same day+time
+        +find_conflicts(tasks)$ list~str~
     }
 
     Owner "1" --> "*" Pet : owns
     Pet "1" --> "*" Task : has care tasks
     Scheduler "1" --> "*" Task : schedules
+    %% v3 relationships:
+    Owner ..> Task : aggregates via all_tasks()
+    Task ..> Task : spawns next via next_occurrence()
