@@ -77,14 +77,26 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+PawPal+ adds four pieces of scheduling logic on top of the basic data classes. Each is a small, focused method:
 
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | `Scheduler.sort_by_time()` | Orders tasks earliest-first by their `time` |
+| Filtering | `Owner.tasks_for_pet()`, `Scheduler.build_plan()` | By pet name; completed tasks are skipped inside `build_plan` |
+| Conflict handling | `Scheduler.find_conflicts()` | Flags tasks booked at the same day + time |
+| Recurring tasks | `Task.next_occurrence()`, `Pet.mark_task_complete()` | Completing a daily/weekly task auto-creates the next one |
+
+**Sorting behavior — `Scheduler.sort_by_time()`**
+Returns a new list of tasks ordered earliest-first. It uses `sorted()` with a lambda key (`key=lambda t: t.time`); because times are zero-padded 24-hour `"HH:MM"` strings, they sort chronologically as plain text with no conversion needed.
+
+**Filtering behavior — `Owner.tasks_for_pet()` and `Scheduler.build_plan()`**
+`tasks_for_pet(pet_name)` filters tasks down to a single pet, returning an empty list if no pet matches (so the UI never crashes on a bad name). Filtering by completion status happens inside `build_plan()`, which skips any task whose `completed` flag is `True`.
+
+**Conflict detection — `Scheduler.find_conflicts()`**
+Compares each task against the ones after it and returns a list of plain-text warnings for any pair that shares both the same day (`due_date`) and the same start `time`. It returns a warning list rather than raising an error, so the program never crashes. Because it runs on a flat task list, it catches clashes within one pet or across different pets. (Tradeoff: it checks exact start times, not overlapping durations — see reflection.md §2b.)
+
+**Recurring task logic — `Task.next_occurrence()` and `Pet.mark_task_complete()`**
+`next_occurrence()` builds a fresh, incomplete copy of a task dated for its next repeat using `timedelta` (daily → +1 day, weekly → +7 days), and returns `None` for non-repeating frequencies. `mark_task_complete()` ties it together: it marks the task done and, if a next occurrence exists, adds it to the pet's task list so recurring care never falls off the schedule.
 
 ## 📸 Demo Walkthrough
 

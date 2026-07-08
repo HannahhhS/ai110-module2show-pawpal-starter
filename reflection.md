@@ -33,6 +33,10 @@ I did make design changes, especially when planning out the classes and attribut
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
 
+One tradeoff my scheduler makes is in how it detects conflicts. My find_conflicts method only flags two tasks as conflicting when they start at the exact same time on the same day (same "HH:MM" and same due date). It does not look at each task's duration, so it won't catch two tasks that overlap without starting at the same minute. For example, a 45-minute walk at 08:30 and a feeding at 09:00 actually overlap in real life, but my scheduler treats them as fine because their start times are different.
+
+I think this tradeoff is reasonable for this scenario because it keeps the logic lightweight and easy to read, and it returns a simple warning message instead of crashing. For a single pet owner planning a day, exact same-time clashes are the most obvious and most common mistake, so catching those covers the main case. Adding full overlap detection (start time + duration) would be more accurate, but it adds complexity I didn't need yet. If I had more time, that would be the first thing I'd upgrade.
+
 ---
 
 ## 3. AI Collaboration

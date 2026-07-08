@@ -5,6 +5,7 @@ and empty method bodies. No scheduling logic yet — that comes next.
 """
 
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
 
 @dataclass
@@ -16,10 +17,40 @@ class Task:
     frequency: str
     duration_minutes: int
     completed: bool = False
+    # ISO "YYYY-MM-DD" the task is due. Blank means "no date set yet".
+    due_date: str = ""
 
     def mark_done(self) -> None:
         """Mark this task as completed."""
         self.completed = True
+
+    def next_occurrence(self) -> "Task | None":
+        """Build the next repeat of this task, or None if it doesn't repeat.
+
+          daily  -> due today + 1 day
+          weekly -> due today + 7 days
+          anything else (e.g. "monthly", one-off) -> None
+
+        timedelta does the date math so month/year rollovers are handled
+        for us (e.g. 2026-07-31 + 1 day -> 2026-08-01). The new task is a
+        fresh, incomplete copy with its due_date moved forward.
+        """
+        if self.frequency == "daily":
+            step = timedelta(days=1)
+        elif self.frequency == "weekly":
+            step = timedelta(weeks=1)
+        else:
+            return None
+
+        next_date = date.today() + step
+        return Task(
+            description=self.description,
+            time=self.time,
+            frequency=self.frequency,
+            duration_minutes=self.duration_minutes,
+            completed=False,
+            due_date=next_date.isoformat(),
+        )
 
 
 @dataclass
@@ -38,6 +69,20 @@ class Pet:
     def list_tasks(self) -> list[Task]:
         """Return this pet's tasks."""
         return self.tasks
+
+    def mark_task_complete(self, task: Task) -> "Task | None":
+        """Mark a task done and auto-schedule its next occurrence.
+
+        For a daily/weekly task this creates a fresh copy dated for the
+        next time and adds it to this pet's list, so recurring care never
+        falls off the schedule. Returns the new task (or None if the task
+        doesn't repeat).
+        """
+        task.mark_done()
+        upcoming = task.next_occurrence()
+        if upcoming is not None:
+            self.add_task(upcoming)
+        return upcoming
 
 
 @dataclass
@@ -67,9 +112,55 @@ class Owner:
             tasks.extend(pet.tasks)
         return tasks
 
+    def tasks_for_pet(self, pet_name: str) -> list[Task]:
+        """Return just one pet's tasks — the "filter by pet name" view.
+
+        Walks the owner's pets, and when it finds the one whose name
+        matches, hands back that pet's task list. Returns an empty list
+        if no pet has that name.
+        """
+        for pet in self.pets:
+            if pet.name == pet_name:
+                return pet.tasks
+        return []
+
 
 class Scheduler:
     """Builds a daily care plan from a set of tasks and constraints."""
+
+    @staticmethod
+    def sort_by_time(tasks: list[Task]) -> list[Task]:
+        """Return the tasks ordered earliest-first by their start time.
+
+        Uses sorted() with a lambda key that pulls each task's `time`.
+        Zero-padded "HH:MM" strings compare in chronological order as
+        plain text (e.g. "08:00" < "09:30"), so no conversion is needed.
+        sorted() returns a new list and leaves the input untouched.
+        """
+        return sorted(tasks, key=lambda t: t.time)
+
+    @staticmethod
+    def find_conflicts(tasks: list[Task]) -> list[str]:
+        """Return a warning for every pair of tasks sharing the same time.
+
+        Lightweight and non-crashing: it compares each task with the ones
+        after it and, when two land on the same day AND the same "HH:MM",
+        adds a plain-text warning to the list. Matching the day matters —
+        an 08:30 task today and an 08:30 task tomorrow don't clash. An
+        empty list means no conflicts. Because it runs on a flat task list,
+        it catches clashes whether the tasks belong to the same pet or to
+        different pets.
+        """
+        warnings: list[str] = []
+        for i, first in enumerate(tasks):
+            for second in tasks[i + 1:]:
+                same_day = first.due_date == second.due_date
+                if same_day and first.time == second.time:
+                    warnings.append(
+                        f"Conflict at {first.time}: "
+                        f"'{first.description}' overlaps with '{second.description}'."
+                    )
+        return warnings
 
     def build_plan(self, tasks: list[Task], available_minutes: int, start_time: str) -> list[Task]:
         """Choose and order tasks into a day's plan within the time budget.
